@@ -1,3 +1,4 @@
+import sys
 import requests
 import asyncio
 import tarfile
@@ -13,6 +14,8 @@ from bs4 import BeautifulSoup
 from alive_progress import alive_bar
 
 from utils import Definition, Dictionary, Entry, Etymology, Usage
+
+target_dictionary = sys.argv[1] if len(sys.argv) > 1 else "all"
 
 
 def tei_to_odxml(tei_doc):
@@ -42,7 +45,7 @@ def tei_to_odxml(tei_doc):
                 bar()
 
     for entry in entries.values():
-        root.entries.append(entry.xml())
+        root.entries.append(entry)
 
     return etree.tostring(root.xml()).decode("utf-8")
 
@@ -95,12 +98,13 @@ async def process():
     for j in json:
         if "name" in j:
             language_pair = j["name"]
-            for release in j["releases"]:
-                if release["platform"] == "src":
-                    url = release["URL"]
-                    tasks.append(
-                        asyncio.ensure_future(process_dict(language_pair, url))
-                    )
+            if language_pair == target_dictionary or target_dictionary == "all":
+                for release in j["releases"]:
+                    if release["platform"] == "src":
+                        url = release["URL"]
+                        tasks.append(
+                            asyncio.ensure_future(process_dict(language_pair, url))
+                        )
 
     await asyncio.gather(*tasks)
 

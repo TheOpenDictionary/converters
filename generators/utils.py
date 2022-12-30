@@ -38,9 +38,15 @@ class Usage:
         self.definitions = definitions
 
     def xml(self):
-        node = etree.Element(
-            "usage", attrib={"pos": self.pos, "description": self.description}
-        )
+        attrib = {}
+
+        if self.pos != "":
+            attrib["pos"] = self.pos
+
+        if self.description != "":
+            attrib["description"] = self.description
+
+        node = etree.Element("usage", attrib=attrib)
 
         for group in self.groups:
             node.append(group.xml())

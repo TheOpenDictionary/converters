@@ -1,5 +1,5 @@
-freedict:
-	poetry run python generators/freedict.py
+freedict language="all":
+	poetry run python generators/freedict.py {{language}}
 
 cedict:
 	poetry run python generators/cedict.py
