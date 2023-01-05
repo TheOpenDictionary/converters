@@ -33,7 +33,8 @@ def tei_to_odxml(tei_doc):
                 defs: list[Definition] = []
 
                 for cit in sense.findAll("cit"):
-                    defs.append(Definition(cit.getText().strip()))
+                    for d in cit.getText().strip().split("\n"):
+                        defs.append(Definition(d))
 
                 if len(defs) > 0:
                     usages.append(Usage(definitions=defs))
@@ -47,7 +48,7 @@ def tei_to_odxml(tei_doc):
     for entry in entries.values():
         root.entries.append(entry)
 
-    return etree.tostring(root.xml()).decode("utf-8")
+    return etree.tostring(root.xml(), pretty_print=True).decode("utf-8")
 
 
 def read_tei_archive(path):

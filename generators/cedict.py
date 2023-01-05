@@ -1,31 +1,31 @@
 import gzip
+from alive_progress import alive_bar
 import requests
 import re
 
 from os import path
-from xml.etree.ElementTree import Element, tostring
+from lxml import etree
 from tempfile import TemporaryDirectory
-from theopendictionary import Dictionary
+from theopendictionary import Dictionary as ODictionary
+from utils import Dictionary, Entry, Etymology, Usage, Definition
 
 url = "https://www.mdbg.net/chinese/export/cedict/cedict_1_0_ts_utf-8_mdbg.txt.gz"
 
+
 with TemporaryDirectory() as dirpath:
-    try:
-        file_name = url.split("/")[-1]
-        blob = requests.get(url).content
-        output_path = path.join(dirpath, file_name)
 
-        new_file = open(output_path, "w+b")
-        new_file.write(blob)
-        new_file.close()
+    file_name = url.split("/")[-1]
+    blob = requests.get(url).content
+    output_path = path.join(dirpath, file_name)
 
-        g = gzip.open(output_path, "rb")
+    new_file = open(output_path, "w+b")
+    new_file.write(blob)
+    new_file.close()
 
-        root = Element("dictionary")
+    g = gzip.open(output_path, "rb")
+    entries = []
 
-        root.attrib["name"] = "CC-CEDICT"
-        entries = {}
-
+    with alive_bar(title="> Processing entries...") as bar:
         while True:
             line = g.readline().decode("utf-8")
 
@@ -39,41 +39,33 @@ with TemporaryDirectory() as dirpath:
                 simplified = m.group(2)
                 pronunciation = m.group(3)
                 definitions = m.group(4).split("/")
-
-                print("Processing word %s..." % simplified)
-
-                entry = entries.get(
-                    simplified,
-                    Element(
-                        "entry",
-                        attrib={
-                            "term": simplified,
-                            "pronunciation": pronunciation,
-                        },
-                    ),
-                )
-
-                ety = Element("ety")
-                usage = Element("usage")
+                defs = []
 
                 for deff in definitions:
-                    d = Element("definition")
-                    d.text = deff
-                    usage.append(d)
+                    d = Definition(deff)
+                    defs.append(d)
 
-                ety.append(usage)
-                entry.append(ety)
+                entries.append(
+                    Entry(
+                        term=simplified,
+                        pronunciation=pronunciation,
+                        etymologies=[Etymology(usages=[Usage(definitions=defs)])],
+                    )
+                )
 
-                entries[simplified] = entry
+                bar.text(simplified)
+                bar()
 
-        g.close()
+    g.close()
 
-        print('Writing to "cedict.odict"...')
+    print('> Writing to "cedict.xml"...')
+    xml = etree.tostring(
+        Dictionary(name="CC-CEDICT", entries=entries).xml(), pretty_print=True
+    ).decode("utf-8")
+    print("called")
+    with open("dictionaries/cedict.xml", "w") as f:
+        f.write(xml)
 
-        [root.append(e) for e in entries.values()]
+    print('> Writing to "cedict.odict"...')
 
-        xml = tostring(root).decode("utf-8")
-
-        Dictionary.write(xml, "dictionaries/cedict.odict")
-    except Exception as e:
-        print(e)
+    ODictionary.write(xml, "dictionaries/cedict.odict")
