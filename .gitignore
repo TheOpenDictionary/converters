@@ -306,4 +306,4 @@ $RECYCLE.BIN/
 # based on the name of the directory bazel is cloned into.
 /bazel-*
 
-*.odict 
+dictionaries

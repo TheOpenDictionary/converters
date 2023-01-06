@@ -58,11 +58,10 @@ with TemporaryDirectory() as dirpath:
 
     g.close()
 
-    print('> Writing to "cedict.xml"...')
     xml = etree.tostring(
         Dictionary(name="CC-CEDICT", entries=entries).xml(), pretty_print=True
     ).decode("utf-8")
-    print("called")
+
     with open("dictionaries/cedict.xml", "w") as f:
         f.write(xml)
 
