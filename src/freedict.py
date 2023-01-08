@@ -1,13 +1,10 @@
 import sys
 import requests
-import asyncio
 import tarfile
 
 from os import path
 from pathlib import Path
 from theopendictionary import Dictionary as ODictionary
-from ctypes import *
-from os import path
 from tempfile import TemporaryDirectory
 from lxml import etree
 from bs4 import BeautifulSoup
@@ -20,8 +17,7 @@ target_dictionary = sys.argv[1] if len(sys.argv) > 1 else "all"
 
 def tei_to_odxml(tei_doc):
     document = BeautifulSoup(tei_doc, features="xml")
-    root = Dictionary(name="FreeDict")
-    entries = {}
+    entries: list[Entry] = []
 
     with alive_bar(title="> Processing entries...") as bar:
         for entry in document.body.findAll("entry"):
@@ -34,21 +30,21 @@ def tei_to_odxml(tei_doc):
 
                 for cit in sense.findAll("cit"):
                     for d in cit.getText().strip().split("\n"):
-                        defs.append(Definition(d))
+                        if len(d.strip()) > 0:
+                            defs.append(Definition(d))
 
                 if len(defs) > 0:
                     usages.append(Usage(definitions=defs))
 
             if len(usages) > 0:
-                entries[term] = Entry(
-                    term, pronunciation=pron, etymologies=set([Etymology(usages)])
+                entries.append(
+                    Entry(term, pronunciation=pron, etymologies=[Etymology(usages)])
                 )
                 bar()
 
-    for entry in entries.values():
-        root.entries.append(entry)
-
-    return etree.tostring(root.xml(), pretty_print=True).decode("utf-8")
+    return etree.tostring(
+        Dictionary(name="FreeDict", entries=entries).xml(), pretty_print=True
+    ).decode("utf-8")
 
 
 def read_tei_archive(path):
@@ -61,8 +57,8 @@ def read_tei_archive(path):
     return None
 
 
-async def process_dict(language_pair, url):
-    with TemporaryDirectory() as dirpath:
+def process_dict(language_pair, url):
+    with TemporaryDirectory(language_pair) as dirpath:
         print("> Processing language pair %s..." % language_pair)
         file_name = url.split("/")[-1]
         output_path = path.join(dirpath, file_name)
@@ -88,13 +84,11 @@ async def process_dict(language_pair, url):
         ODictionary.write(dictionary, dict_path)
 
 
-async def process():
+def process():
 
-    Path("dictionaries").mkdir(parents=True, exist_ok=True)
+    Path("dictionaries/freedict").mkdir(parents=True, exist_ok=True)
 
     json = requests.get("https://freedict.org/freedict-database.json").json()
-
-    tasks = []
 
     for j in json:
         if "name" in j:
@@ -103,12 +97,7 @@ async def process():
                 for release in j["releases"]:
                     if release["platform"] == "src":
                         url = release["URL"]
-                        tasks.append(
-                            asyncio.ensure_future(process_dict(language_pair, url))
-                        )
-
-    await asyncio.gather(*tasks)
+                        process_dict(language_pair, url)
 
 
-if __name__ == "__main__":
-    asyncio.run(process())
+process()

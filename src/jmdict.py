@@ -1,12 +1,12 @@
 import gzip
 from os import path
+from pathlib import Path
 import re
 import sys
 from tempfile import TemporaryDirectory
 from alive_progress import alive_bar
 from bs4 import BeautifulSoup
 from lxml import etree
-import requests
 from ftputil import FTPHost
 from theopendictionary import Dictionary as ODictionary
 
@@ -36,6 +36,8 @@ pos_resolution = {
 def resolve_pos(pos):
     return pos_resolution.get(pos, pos)
 
+
+Path("dictionaries/jmdict").mkdir(parents=True, exist_ok=True)
 
 with TemporaryDirectory() as dirpath:
     file_name = url.split("/")[-1]
